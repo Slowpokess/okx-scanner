@@ -1,20 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, Target, Upload, Download, Trash2 } from 'lucide-react'
+import { Settings, Upload, Download, Trash2 } from 'lucide-react'
 import { Button } from '../Button'
 import { Card } from '../Card'
 import { getSettings, updateSettings, clearAllData } from '@/lib/db'
-import type { Settings as SettingsType, Trade, SnapshotData } from '@/lib/types'
+import { useI18n } from '@/lib/i18n'
+import type { Settings as SettingsType } from '@/lib/types'
 
 interface SettingsPanelProps {
   onRefresh: () => void
 }
 
 export function SettingsPanel({ onRefresh }: SettingsPanelProps) {
-  const [startCapital, setStartCapital] = useState('0')
+  const { t } = useI18n()
+  const [startCapitalUAH, setStartCapitalUAH] = useState('0')
+  const [startCapitalUSDT, setStartCapitalUSDT] = useState('0')
   const [targetProfit, setTargetProfit] = useState('')
-  const [expectedProfitPerCycle, setExpectedProfitPerCycle] = useState('')
   const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
@@ -23,30 +25,28 @@ export function SettingsPanel({ onRefresh }: SettingsPanelProps) {
 
   const loadSettings = async () => {
     const settings = await getSettings()
-    setStartCapital(settings.startCapital.toString())
+    setStartCapitalUAH(settings.startCapitalUAH.toString())
+    setStartCapitalUSDT(settings.startCapitalUSDT.toString())
     setTargetProfit(settings.targetProfit?.toString() || '')
-    setExpectedProfitPerCycle(settings.expectedProfitPerCycle?.toString() || '')
   }
 
   const handleSave = async () => {
     const settings: SettingsType = {
-      startCapital: parseFloat(startCapital) || 0,
+      startCapitalUAH: parseFloat(startCapitalUAH) || 0,
+      startCapitalUSDT: parseFloat(startCapitalUSDT) || 0,
       targetProfit: targetProfit ? parseFloat(targetProfit) : undefined,
-      expectedProfitPerCycle: expectedProfitPerCycle
-        ? parseFloat(expectedProfitPerCycle)
-        : undefined,
     }
     await updateSettings(settings)
     onRefresh()
-    alert('Settings saved')
+    alert(t.common.settingsSaved)
   }
 
   const handleExportJSON = async () => {
-    const trades = await (await import('@/lib/db')).getAllTrades()
-    const snapshots = await (await import('@/lib/db')).getLatestSnapshot()
+    const { getAllTrades } = await import('@/lib/db')
+    const trades = await getAllTrades()
     const settings = await getSettings()
 
-    const data = { trades, snapshots: snapshots ? [snapshots] : [], settings }
+    const data = { trades, settings }
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: 'application/json',
     })
@@ -58,41 +58,22 @@ export function SettingsPanel({ onRefresh }: SettingsPanelProps) {
   }
 
   const handleExportCSV = async () => {
-    const trades = await (await import('@/lib/db')).getAllTrades()
+    const { getAllTrades } = await import('@/lib/db')
+    const trades = await getAllTrades()
 
     if (trades.length === 0) {
-      alert('No trades to export')
+      alert(t.common.noTradesExport)
       return
     }
 
-    const headers = [
-      'datetime',
-      'side',
-      'price',
-      'amountUSDT',
-      'feeUAH',
-      'comment',
-      'snapshotTs',
-      'bestBid',
-      'bestAsk',
-      'mid',
-      'spreadPct',
-      'stale',
-    ]
-
+    const headers = ['datetime', 'side', 'price', 'amountUSDT', 'notionalUAH', 'notes']
     const rows = trades.map((t) => [
       new Date(t.datetime).toISOString(),
       t.side,
       t.price,
       t.amountUSDT,
-      t.feeUAH || '',
-      `"${t.comment}"`,
-      t.snapshot?.snapshotTs || '',
-      t.snapshot?.bestBid || '',
-      t.snapshot?.bestAsk || '',
-      t.snapshot?.mid || '',
-      t.snapshot?.spreadPct || '',
-      t.snapshot?.stale ? 'true' : 'false',
+      (t.price * t.amountUSDT).toFixed(2),
+      `"${t.notes || ''}"`,
     ])
 
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
@@ -122,36 +103,44 @@ export function SettingsPanel({ onRefresh }: SettingsPanelProps) {
     }
 
     onRefresh()
-    alert('Import complete')
+    alert(t.common.importComplete)
   }
 
   const handleClearAll = async () => {
-    if (
-      !confirm('Are you sure you want to delete all data? This cannot be undone.')
-    ) {
+    if (!confirm(t.common.confirmDelete)) {
       return
     }
 
     await clearAllData()
     onRefresh()
-    alert('All data cleared')
+    alert(t.common.dataCleared)
   }
 
   return (
-    <Card title="Settings" className="mb-6">
+    <Card title={t.journal.settings} className="mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Start Capital (UAH)</label>
+          <label className="block text-sm text-gray-400 mb-1">{t.journal.uahBalance}</label>
           <input
             type="number"
-            value={startCapital}
-            onChange={(e) => setStartCapital(e.target.value)}
+            value={startCapitalUAH}
+            onChange={(e) => setStartCapitalUAH(e.target.value)}
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Target Profit (UAH)</label>
+          <label className="block text-sm text-gray-400 mb-1">{t.journal.usdtBalance}</label>
+          <input
+            type="number"
+            value={startCapitalUSDT}
+            onChange={(e) => setStartCapitalUSDT(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">{t.journal.targetProfit}</label>
           <input
             type="number"
             value={targetProfit}
@@ -161,21 +150,10 @@ export function SettingsPanel({ onRefresh }: SettingsPanelProps) {
           />
         </div>
 
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Expected Profit/Cycle</label>
-          <input
-            type="number"
-            value={expectedProfitPerCycle}
-            onChange={(e) => setExpectedProfitPerCycle(e.target.value)}
-            placeholder="If no history"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
         <div className="flex items-end">
           <Button onClick={handleSave} className="w-full">
             <Settings className="w-4 h-4 mr-1" />
-            Save Settings
+            {t.journal.saveSettings}
           </Button>
         </div>
       </div>
@@ -183,17 +161,17 @@ export function SettingsPanel({ onRefresh }: SettingsPanelProps) {
       <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-800">
         <Button variant="secondary" size="sm" onClick={handleExportJSON}>
           <Download className="w-4 h-4 mr-1" />
-          Export JSON
+          {t.journal.exportJson}
         </Button>
 
         <Button variant="secondary" size="sm" onClick={handleExportCSV}>
           <Download className="w-4 h-4 mr-1" />
-          Export CSV
+          {t.journal.exportCsv}
         </Button>
 
         <Button variant="secondary" size="sm" onClick={() => setShowImport(!showImport)}>
           <Upload className="w-4 h-4 mr-1" />
-          Import
+          {t.journal.import}
         </Button>
 
         {showImport && (
@@ -207,7 +185,7 @@ export function SettingsPanel({ onRefresh }: SettingsPanelProps) {
 
         <Button variant="danger" size="sm" onClick={handleClearAll} className="ml-auto">
           <Trash2 className="w-4 h-4 mr-1" />
-          Clear All Data
+          {t.journal.clearAll}
         </Button>
       </div>
     </Card>

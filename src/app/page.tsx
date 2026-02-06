@@ -2,19 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { BookOpen } from 'lucide-react'
 import { ScannerHeader } from '@/components/scanner/ScannerHeader'
 import { SummaryCards } from '@/components/scanner/SummaryCards'
 import { OfferTable } from '@/components/scanner/OfferTable'
 import { Loading } from '@/components/Loading'
 import { Toast } from '@/components/Toast'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { saveDraftTrade } from '@/lib/draft'
 import { snapshotStorage } from '@/lib/storage'
+import { useI18n } from '@/lib/i18n'
 import type { SummaryResponse, OKXOffer, Side } from '@/lib/types'
 
 export default function ScannerPage() {
-  const router = useRouter()
+  const { t } = useI18n()
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +76,7 @@ export default function ScannerPage() {
     }
 
     saveDraftTrade(draft)
-    router.push('/journal?draft=1')
+    window.location.href = '/journal?draft=1'
   }
 
   const handleSaveSnapshot = async () => {
@@ -92,10 +93,10 @@ export default function ScannerPage() {
         sellTop10: summary.sellTop10,
       })
 
-      setToast({ message: 'Snapshot saved', type: 'success' })
+      setToast({ message: t.common.snapshotSaved, type: 'success' })
     } catch (err) {
       console.error('Save snapshot error:', err)
-      setToast({ message: 'Failed to save snapshot', type: 'error' })
+      setToast({ message: t.common.snapshotFailed, type: 'error' })
     }
   }
 
@@ -105,17 +106,18 @@ export default function ScannerPage() {
       <header className="border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-white">OKX P2P Scanner</h1>
+            <h1 className="text-xl font-bold text-white">{t.scanner.title}</h1>
             <nav className="flex gap-4">
               <Link href="/" className="text-green-400 font-medium">
-                Scanner
+                {t.nav.scanner}
               </Link>
               <Link href="/journal" className="text-gray-500 hover:text-gray-300">
                 <BookOpen className="w-4 h-4 inline mr-1" />
-                Journal
+                {t.nav.journal}
               </Link>
             </nav>
           </div>
+          <LanguageSwitcher />
         </div>
       </header>
 
@@ -130,7 +132,7 @@ export default function ScannerPage() {
         />
 
         {loading && !summary ? (
-          <Loading message="Fetching OKX P2P data..." />
+          <Loading message={t.common.loading} />
         ) : error ? (
           <div className="bg-gray-900 border border-red-900 rounded-lg p-8 text-center">
             <p className="text-red-400">{error}</p>
@@ -138,7 +140,7 @@ export default function ScannerPage() {
               onClick={fetchData}
               className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
             >
-              Retry
+              {t.common.refresh}
             </button>
           </div>
         ) : summary ? (

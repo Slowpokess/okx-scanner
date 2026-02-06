@@ -47,11 +47,35 @@ export async function addSnapshot(snapshot: SnapshotData): Promise<number> {
 export async function getSettings(): Promise<Settings> {
   const settings = await db.settings.toArray()
   if (settings.length === 0) {
-    const defaultSettings: Settings = { startCapital: 0 }
+    const defaultSettings: Settings = {
+      startCapitalUAH: 0,
+      startCapitalUSDT: 0
+    }
     const id = await db.settings.add(defaultSettings)
     return { ...defaultSettings, id }
   }
-  return settings[0]
+
+  // Migrate old settings format
+  const setting = settings[0]
+  const needsMigration = 'startCapital' in setting || 'startCapitalCurrency' in setting
+
+  if (needsMigration) {
+    const oldSettings = setting as any
+    const newSettings: Settings = {
+      id: setting.id,
+      startCapitalUAH: oldSettings.startCapitalCurrency === 'USDT'
+        ? 0
+        : (oldSettings.startCapital || 0),
+      startCapitalUSDT: oldSettings.startCapitalCurrency === 'USDT'
+        ? (oldSettings.startCapital || 0)
+        : 0,
+      targetProfit: oldSettings.targetProfit,
+    }
+    await db.settings.update(setting.id!, newSettings)
+    return newSettings
+  }
+
+  return setting
 }
 
 export async function updateSettings(settings: Settings): Promise<void> {

@@ -41,31 +41,17 @@ export interface SummaryResponse {
 
 export type TradeSide = 'BUY' | 'SELL'
 
-export interface TradeSnapshot {
-  snapshotTs: number
-  bestBid: number
-  bestAsk: number
-  mid: number
-  spreadPct: number
-  stale?: boolean
-}
-
 export interface Trade {
   id?: number
   datetime: number
   side: TradeSide
-  price: number
   amountUSDT: number
-  feeUAH?: number
-  comment: string
-  snapshot: TradeSnapshot
+  price: number  // Курс UAH/USDT
+  notes?: string
 }
 
 export interface DerivedTrade extends Trade {
   notionalUAH: number
-  slippageUAH?: number
-  slippagePct?: number
-  feeImpactUAH?: number
 }
 
 export interface SnapshotData {
@@ -79,11 +65,13 @@ export interface SnapshotData {
   sellTop10: OKXOffer[]
 }
 
+export type Currency = 'UAH' | 'USDT'
+
 export interface Settings {
   id?: number
-  startCapital: number
+  startCapitalUAH: number
+  startCapitalUSDT: number
   targetProfit?: number
-  expectedProfitPerCycle?: number
 }
 
 export interface Balances {
@@ -97,24 +85,15 @@ export interface EquityResult {
   currentMid: number
 }
 
-export interface FeeSummary {
-  totalFeesUAH: number
-  totalSlippageUAH: number
-  averageSlippagePct: number
-}
-
-export interface CycleAnalysis {
-  avgProfitPerCycle: number
-  cyclesLeft: number
-  txLeft: number
-}
-
-// ==================== Draft Trade ====================
-
-export interface DraftTrade {
-  side: TradeSide
-  price: number
-  datetime: number
-  comment: string
-  snapshot: TradeSnapshot
+export interface TransactionSummary {
+  totalBuyUSDT: number
+  totalSellUSDT: number
+  totalBuyUAH: number
+  totalSellUAH: number
+  profitUSDT: number
+  profitUAH: number
+  averageBuyPrice: number
+  averageSellPrice: number
+  averageSpread: number
+  transactionCount: number
 }

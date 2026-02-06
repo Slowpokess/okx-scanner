@@ -64,8 +64,17 @@ function parseNumber(value: unknown): number {
   return 0
 }
 
-function extractRawItems(data: any): any[] | null {
+function extractRawItems(data: any, side: Side): any[] | null {
   if (!data) return null
+
+  // New OKX API format: data.buy or data.sell
+  if (data.data && typeof data.data === 'object') {
+    if (Array.isArray(data.data[side])) {
+      return data.data[side]
+    }
+  }
+
+  // Legacy formats for compatibility
   if (Array.isArray(data?.data)) return data.data
   if (Array.isArray(data?.data?.details)) return data.data.details
   if (Array.isArray(data?.data?.data)) return data.data.data
@@ -148,6 +157,10 @@ async function fetchFromOKXSource(
       paymentMethod: 'all',
       userType: 'all',
       limit: limit.toString(),
+      showTrade: 'false',
+      showFollow: 'false',
+      showAlreadyTraded: 'false',
+      isAbleFilter: 'false',
       t: now.toString(),
     })
 
@@ -162,7 +175,7 @@ async function fetchFromOKXSource(
     ]
 
     for (const baseUrl of baseUrls) {
-      const url = `${baseUrl}/v3/c2c/tradingOrders/book`
+      const url = `${baseUrl}/v3/c2c/tradingOrders/books`
       const requestUrl = `${url}?${params}`
       const referer = side === 'buy'
         ? `https://www.okx.com/p2p-markets/${fiat.toLowerCase()}/buy-${crypto.toLowerCase()}`
@@ -185,6 +198,7 @@ async function fetchFromOKXSource(
         }
 
         data = await response.json()
+        console.log(`[OKX] Raw response from ${baseUrl}:`, JSON.stringify(data, null, 2).substring(0, 2000))
         break
       } catch (error) {
         lastError = error
@@ -201,9 +215,10 @@ async function fetchFromOKXSource(
     }
 
     // Parse response - OKX C2C API format
-    const rawItems = extractRawItems(data)
+    const rawItems = extractRawItems(data, side)
 
     if (!rawItems) {
+      console.error(`[OKX] Could not extract items from response. Data structure:`, JSON.stringify(data, null, 2).substring(0, 1000))
       throw new Error('Invalid OKX response format')
     }
 
@@ -507,4 +522,11 @@ export async function fetchP2P(
   limit: number = 10
 ): Promise<OKXResponse | null> {
   return fetchFromSources(side, fiat, crypto, limit)
+}
+
+export function resetCircuitBreaker() {
+  console.log('[OKX] Resetting circuit breaker')
+  circuitBreaker.clear()
+  cache.clear()
+  lastFetchTime.clear()
 }

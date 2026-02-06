@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchSummary } from '@/lib/okx'
+import { fetchSummary, resetCircuitBreaker } from '@/lib/okx'
 
 export const runtime = 'nodejs'
 
@@ -8,6 +8,11 @@ export async function GET(request: NextRequest) {
   const fiat = searchParams.get('fiat') || 'UAH'
   const crypto = searchParams.get('crypto') || 'USDT'
   const limit = parseInt(searchParams.get('limit') || '10')
+
+  // Reset circuit breaker if requested
+  if (searchParams.get('reset') === 'true') {
+    resetCircuitBreaker()
+  }
 
   try {
     const data = await fetchSummary(fiat, crypto, limit)

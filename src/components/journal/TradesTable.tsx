@@ -1,7 +1,7 @@
 'use client'
 
 import { Trash2 } from 'lucide-react'
-import { Button } from '../Button'
+import { useI18n } from '@/lib/i18n'
 import type { DerivedTrade } from '@/lib/types'
 
 interface TradesTableProps {
@@ -10,10 +10,12 @@ interface TradesTableProps {
 }
 
 export function TradesTable({ trades, onDelete }: TradesTableProps) {
+  const { t } = useI18n()
+
   if (trades.length === 0) {
     return (
       <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 text-center">
-        <p className="text-gray-500">No trades yet. Add your first trade above.</p>
+        <p className="text-gray-500">{t.journal.noTrades}</p>
       </div>
     )
   }
@@ -21,22 +23,20 @@ export function TradesTable({ trades, onDelete }: TradesTableProps) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-800">
-        <h2 className="text-lg font-semibold text-gray-200">Trades</h2>
+        <h2 className="text-lg font-semibold text-gray-200">{t.journal.title}</h2>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-800/50">
             <tr>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Date</th>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Side</th>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Price</th>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Amount</th>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Notional</th>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Fees</th>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Slippage</th>
-              <th className="px-4 py-2 text-left text-gray-400 font-medium">Comment</th>
-              <th className="px-4 py-2 text-right text-gray-400 font-medium">Actions</th>
+              <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.datetime}</th>
+              <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.side}</th>
+              <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.price}</th>
+              <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.amount}</th>
+              <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.notional}</th>
+              <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.notes}</th>
+              <th className="px-4 py-2 text-right text-gray-400 font-medium">{t.journal.actions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
@@ -53,7 +53,7 @@ export function TradesTable({ trades, onDelete }: TradesTableProps) {
                         : 'bg-green-900/30 text-green-400'
                     }`}
                   >
-                    {trade.side}
+                    {trade.side === 'BUY' ? t.common.buy : t.common.sell}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-300">{trade.price.toFixed(2)}</td>
@@ -63,36 +63,8 @@ export function TradesTable({ trades, onDelete }: TradesTableProps) {
                 <td className="px-4 py-3 text-gray-300">
                   {trade.notionalUAH.toFixed(2)}
                 </td>
-                <td className="px-4 py-3 text-gray-400">
-                  {trade.feeImpactUAH ? trade.feeImpactUAH.toFixed(2) : '—'}
-                </td>
-                <td className="px-4 py-3">
-                  {trade.slippageUAH !== undefined ? (
-                    <div className="flex flex-col">
-                      <span
-                        className={`text-xs ${
-                          trade.slippageUAH > 0 ? 'text-red-400' : 'text-green-400'
-                        }`}
-                      >
-                        {trade.slippageUAH.toFixed(2)} UAH
-                      </span>
-                      {trade.slippagePct !== undefined && (
-                        <span
-                          className={`text-xs ${
-                            trade.slippagePct > 0 ? 'text-red-400' : 'text-green-400'
-                          }`}
-                        >
-                          {trade.slippagePct > 0 ? '+' : ''}
-                          {trade.slippagePct.toFixed(2)}%
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-gray-500">—</span>
-                  )}
-                </td>
                 <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">
-                  {trade.comment}
+                  {trade.notes || '—'}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
