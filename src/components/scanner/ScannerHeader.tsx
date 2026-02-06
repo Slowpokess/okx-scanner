@@ -21,13 +21,13 @@ export function ScannerHeader({
   isStale,
   onSaveSnapshot,
 }: ScannerHeaderProps) {
-  const [interval, setInterval] = useState('20')
+  const [updateInterval, setUpdateInterval] = useState('20')
   const [timeUntilUpdate, setTimeUntilUpdate] = useState(0)
 
   useEffect(() => {
     if (!isAutoUpdate) return
 
-    const intervalMs = parseInt(interval) * 1000
+    const intervalMs = parseInt(updateInterval) * 1000
     const timer = setInterval(() => {
       setTimeUntilUpdate((prev) => {
         if (prev <= 1000) {
@@ -43,7 +43,7 @@ export function ScannerHeader({
     setTimeUntilUpdate(intervalMs)
 
     return () => clearInterval(timer)
-  }, [isAutoUpdate, interval, onUpdate])
+  }, [isAutoUpdate, updateInterval, onUpdate])
 
   const getTimeSinceLastUpdate = () => {
     if (!lastUpdate) return null
@@ -78,8 +78,8 @@ export function ScannerHeader({
         )}
 
         <select
-          value={interval}
-          onChange={(e) => setInterval(e.target.value)}
+          value={updateInterval}
+          onChange={(e) => setUpdateInterval(e.target.value)}
           className="px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
         >
           <option value="20">20s</option>
