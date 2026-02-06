@@ -24,8 +24,7 @@ export function EquityChart({ trades, equityResult }: EquityChartProps) {
     const cumulativeTrades = trades.slice(0, index + 1)
     const uah = trades.slice(0, index + 1).reduce((sum, t) => {
       const notional = t.price * t.amountUSDT
-      const fee = t.feeUAH || 0
-      return t.side === 'BUY' ? sum - notional - fee : sum + notional - fee
+      return t.side === 'BUY' ? sum - notional : sum + notional
     }, 0)
     const usdt = trades.slice(0, index + 1).reduce((sum, t) => {
       return t.side === 'BUY' ? sum + t.amountUSDT : sum - t.amountUSDT
@@ -44,8 +43,7 @@ export function EquityChart({ trades, equityResult }: EquityChartProps) {
     const cumulativeTrades = trades.slice(0, index + 1)
     const uah = cumulativeTrades.reduce((sum, t) => {
       const notional = t.price * t.amountUSDT
-      const fee = t.feeUAH || 0
-      return t.side === 'BUY' ? sum - notional - fee : sum + notional - fee
+      return t.side === 'BUY' ? sum - notional : sum + notional
     }, 0)
     const usdt = cumulativeTrades.reduce((sum, t) => {
       return t.side === 'BUY' ? sum + t.amountUSDT : sum - t.amountUSDT
