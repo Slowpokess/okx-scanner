@@ -16,7 +16,7 @@ import {
   deleteTrade,
   getSettings,
 } from '@/lib/db'
-import { deriveTrade, calculateBalances, calculateEquity, calculateTransactionSummary } from '@/lib/calculations'
+import { deriveTradesWithPnL, calculateBalances, calculateEquity, calculateTransactionSummary } from '@/lib/calculations'
 import { fetchSummary } from '@/lib/okx'
 import { useI18n } from '@/lib/i18n'
 import type { Trade, Settings } from '@/lib/types'
@@ -79,7 +79,7 @@ function JournalContent() {
     )
   }
 
-  const derivedTrades = trades.map(deriveTrade)
+  const derivedTrades = deriveTradesWithPnL(trades, settings, currentMid)
   const balances = calculateBalances(trades, settings, currentMid)
   const equityResult = calculateEquity(trades, settings, currentMid)
   const summary = calculateTransactionSummary(trades)

@@ -52,6 +52,7 @@ export interface Trade {
 
 export interface DerivedTrade extends Trade {
   notionalUAH: number
+  cumulativePnL?: number
 }
 
 export interface SnapshotData {

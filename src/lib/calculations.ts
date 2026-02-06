@@ -21,6 +21,39 @@ export function deriveTrade(trade: Trade): DerivedTrade {
   }
 }
 
+export function deriveTradesWithPnL(
+  trades: Trade[],
+  settings: Settings | null,
+  currentMid: number
+): DerivedTrade[] {
+  const startCapitalInUAH = (settings?.startCapitalUAH || 0) +
+    (settings?.startCapitalUSDT || 0) * currentMid
+
+  let uah = settings?.startCapitalUAH || 0
+  let usdt = settings?.startCapitalUSDT || 0
+
+  return trades.map((trade) => {
+    const notional = calculateNotional(trade)
+
+    if (trade.side === 'BUY') {
+      uah -= notional
+      usdt += trade.amountUSDT
+    } else {
+      uah += notional
+      usdt -= trade.amountUSDT
+    }
+
+    const equity = uah + usdt * currentMid
+    const cumulativePnL = equity - startCapitalInUAH
+
+    return {
+      ...trade,
+      notionalUAH: notional,
+      cumulativePnL,
+    }
+  })
+}
+
 // ==================== Balance Calculations ====================
 
 export function calculateBalances(
@@ -86,7 +119,6 @@ export function calculateTransactionSummary(trades: Trade[]): TransactionSummary
   const averageSellPrice = totalSellUSDT > 0 ? totalSellUAH / totalSellUSDT : 0
 
   // Прибыль: разница между продажей и покупкой в USDT
-  const minUSDT = Math.min(totalBuyUSDT, totalSellUSDT)
   const profitUSDT = totalSellUSDT - totalBuyUSDT
 
   // Прибыль в UAH

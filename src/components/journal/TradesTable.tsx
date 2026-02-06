@@ -35,47 +35,58 @@ export function TradesTable({ trades, onDelete }: TradesTableProps) {
               <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.price}</th>
               <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.amount}</th>
               <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.notional}</th>
+              <th className="px-4 py-2 text-left text-gray-400 font-medium">P&L</th>
               <th className="px-4 py-2 text-left text-gray-400 font-medium">{t.journal.notes}</th>
               <th className="px-4 py-2 text-right text-gray-400 font-medium">{t.journal.actions}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
-            {trades.map((trade) => (
-              <tr key={trade.id} className="hover:bg-gray-800/30">
-                <td className="px-4 py-3 text-gray-400">
-                  {new Date(trade.datetime).toLocaleString()}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-2 py-0.5 text-xs rounded ${
-                      trade.side === 'BUY'
-                        ? 'bg-red-900/30 text-red-400'
-                        : 'bg-green-900/30 text-green-400'
-                    }`}
-                  >
-                    {trade.side === 'BUY' ? t.common.buy : t.common.sell}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-300">{trade.price.toFixed(2)}</td>
-                <td className="px-4 py-3 text-gray-300">
-                  {trade.amountUSDT.toFixed(2)}
-                </td>
-                <td className="px-4 py-3 text-gray-300">
-                  {trade.notionalUAH.toFixed(2)}
-                </td>
-                <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">
-                  {trade.notes || '—'}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => trade.id && onDelete(trade.id)}
-                    className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {trades.map((trade) => {
+              const pnl = trade.cumulativePnL ?? 0
+              const isProfitable = pnl > 0
+
+              return (
+                <tr key={trade.id} className="hover:bg-gray-800/30">
+                  <td className="px-4 py-3 text-gray-400">
+                    {new Date(trade.datetime).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-0.5 text-xs rounded ${
+                        trade.side === 'BUY'
+                          ? 'bg-red-900/30 text-red-400'
+                          : 'bg-green-900/30 text-green-400'
+                      }`}
+                    >
+                      {trade.side === 'BUY' ? t.common.buy : t.common.sell}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-300">{trade.price.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-300">
+                    {trade.amountUSDT.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3 text-gray-300">
+                    {trade.notionalUAH.toFixed(2)}
+                  </td>
+                  <td className={`px-4 py-3 font-semibold ${
+                    isProfitable ? 'text-green-400' : pnl < 0 ? 'text-red-400' : 'text-gray-400'
+                  }`}>
+                    {isProfitable ? '+' : ''}{pnl.toFixed(2)} UAH
+                  </td>
+                  <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">
+                    {trade.notes || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => trade.id && onDelete(trade.id)}
+                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
