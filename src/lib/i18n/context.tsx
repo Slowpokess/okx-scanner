@@ -18,17 +18,16 @@ interface I18nProviderProps {
 }
 
 export function I18nProvider({ children }: I18nProviderProps) {
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY) as Locale
-      if (stored && locales[stored]) return stored
+  // Initialize with default locale to match server and client
+  const [locale, setLocaleState] = useState<Locale>('en')
 
-      // Detect browser language
-      const browserLang = navigator.language.split('-')[0] as Locale
-      return locales[browserLang] ? browserLang : 'en'
+  // Load locale from localStorage after hydration (client-side only)
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY) as Locale
+    if (stored && locales[stored]) {
+      setLocaleState(stored)
     }
-    return 'en'
-  })
+  }, [])
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale)
