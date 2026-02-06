@@ -184,9 +184,10 @@ export function analyzeCycles(trades: Trade[]): {
 
 export function calculateCyclesLeft(
   trades: Trade[],
-  settings: Settings,
+  settings: Settings | null,
   currentProfit: number
 ): CycleAnalysis | null {
+  if (!settings) return null
   const targetProfit = settings.targetProfit
   if (!targetProfit) {
     return null
