@@ -55,6 +55,25 @@ function getOkxHeaders(mode: 'minimal' | 'browser'): HeadersInit {
   }
 }
 
+function parseNumber(value: unknown): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
+}
+
+function extractRawItems(data: any): any[] | null {
+  if (!data) return null
+  if (Array.isArray(data?.data)) return data.data
+  if (Array.isArray(data?.data?.details)) return data.data.details
+  if (Array.isArray(data?.data?.data)) return data.data.data
+  if (Array.isArray(data?.data?.list)) return data.data.list
+  if (Array.isArray(data?.data?.orders)) return data.data.orders
+  return null
+}
+
 // ==================== Fetch from OKX ====================
 
 function fetchWithTimeout(
@@ -121,33 +140,45 @@ async function fetchFromOKXSource(
   }
 
   try {
+    // Build URL for OKX C2C P2P API
     const params = new URLSearchParams({
       side,
-      fiat,
-      crypto,
+      baseCurrency: crypto.toLowerCase(),
+      quoteCurrency: fiat.toLowerCase(),
       paymentMethod: 'all',
-      amount: '1000',
+      userType: 'all',
+      limit: limit.toString(),
+      t: now.toString(),
     })
 
     let lastError: unknown
     let data: any = null
-    for (const baseUrl of OKX_BASE_URLS) {
-      const url = `${baseUrl}/api/v5/dex/aggregate/quote/p2p-ticker`
+
+    // Try multiple base URLs
+    const baseUrls = [
+      ...OKX_BASE_URLS,
+      'https://www.okex.me',
+      'https://www.okex.com',
+    ]
+
+    for (const baseUrl of baseUrls) {
+      const url = `${baseUrl}/v3/c2c/tradingOrders/book`
       const requestUrl = `${url}?${params}`
+      const referer = side === 'buy'
+        ? `https://www.okx.com/p2p-markets/${fiat.toLowerCase()}/buy-${crypto.toLowerCase()}`
+        : `https://www.okx.com/p2p-markets/${fiat.toLowerCase()}/sell-${crypto.toLowerCase()}`
+
       try {
-        let response = await fetchWithTimeout(
+        const response = await fetchWithTimeout(
           requestUrl,
-          { headers: getOkxHeaders('minimal') },
+          {
+            headers: {
+              ...getOkxHeaders('browser'),
+              Referer: referer,
+            },
+          },
           10000
         )
-
-        if (!response.ok) {
-          response = await fetchWithTimeout(
-            requestUrl,
-            { headers: getOkxHeaders('browser') },
-            10000
-          )
-        }
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
@@ -164,17 +195,13 @@ async function fetchFromOKXSource(
       throw lastError || new Error('OKX fetch failed')
     }
 
-    const rawItems = Array.isArray(data?.data)
-      ? data.data
-      : Array.isArray(data?.data?.list)
-        ? data.data.list
-        : Array.isArray(data?.data?.data)
-          ? data.data.data
-          : null
-
+    // Check for OKX API error
     if (data?.code && data.code !== '0') {
-      throw new Error(`OKX error ${data.code}`)
+      throw new Error(`OKX error ${data.code}: ${data.msg || ''}`)
     }
+
+    // Parse response - OKX C2C API format
+    const rawItems = extractRawItems(data)
 
     if (!rawItems) {
       throw new Error('Invalid OKX response format')
@@ -182,23 +209,21 @@ async function fetchFromOKXSource(
 
     // Normalize response
     const items: OKXOffer[] = rawItems.slice(0, limit).map((item: any) => ({
-      price: parseFloat(item.avgPrice || item.price || '0'),
-      minLimit: parseFloat(item.minLimit || '0'),
-      maxLimit: parseFloat(item.maxLimit || '0'),
-      available: parseFloat(item.availableAmount || item.available || '0'),
-      paymentMethods: item.paymentMethods
-        ? item.paymentMethods.split(',').map((m: string) => m.trim())
-        : Array.isArray(item.paymentMethods)
-          ? item.paymentMethods
-          : [],
+      price: parseNumber(item.price ?? item.unitPrice ?? item.priceStr),
+      minLimit: parseNumber(item.minSingleTransAmount ?? item.minAmount ?? item.minSingleTransAmountStr),
+      maxLimit: parseNumber(item.maxSingleTransAmount ?? item.maxAmount ?? item.maxSingleTransAmountStr),
+      available: parseNumber(item.availableAmount ?? item.available ?? item.remainingAmount ?? item.remainAmount),
+      paymentMethods: Array.isArray(item.paymentMethods)
+        ? item.paymentMethods.map((m: any) => m.paymentMethod || m.name || String(m))
+        : [],
       merchantName: item.nickName || item.advertiserName || item.userName || 'Unknown',
       merchantOrders: item.recentCompletedOrderCount
         ? parseInt(item.recentCompletedOrderCount)
-        : undefined,
+        : (item.recentOrderNum ? parseInt(item.recentOrderNum) : undefined),
       merchantCompletionRate: item.recentCompletionRate
-        ? parseFloat(item.recentCompletionRate)
+        ? parseNumber(item.recentCompletionRate)
         : undefined,
-      terms: item.advertisedPayMethod || item.terms || '',
+      terms: item.advertisedPayMethod || item.payMethodTip || item.adNotice || item.terms || '',
     }))
 
     const result: OKXResponse = {
@@ -442,21 +467,31 @@ export async function fetchSummary(
       return null
     }
 
-    const bestAsk = buyData.items[0]?.price || 0
-    const bestBid = sellData.items[0]?.price || 0
-    const mid = (bestAsk + bestBid) / 2
-    const spreadPct = bestBid > 0 ? ((bestAsk - bestBid) / bestBid) * 100 : 0
+    // Sort to get best prices
+    const buyItems = [...buyData.items].sort((a, b) => a.price - b.price)
+    const sellItems = [...sellData.items].sort((a, b) => b.price - a.price)
+
+    // Best prices:
+    // - bestBuy: lowest price from buy side (best seller for you)
+    // - bestSell: highest price from sell side (best buyer from you)
+    const bestBuy = buyItems[0]?.price || 0
+    const bestSell = sellItems[0]?.price || 0
+    const mid = (bestBuy + bestSell) / 2
+
+    // Spread: (bestSell - bestBuy) / bestBuy × 100
+    // Shows how much you lose on a round trip
+    const spreadPct = bestBuy > 0 ? ((bestSell - bestBuy) / bestBuy) * 100 : 0
 
     return {
       ts: Date.now(),
       fiat,
       crypto,
-      bestAsk,
-      bestBid,
+      bestAsk: bestBuy,  // Best BUY price (you buy USDT at this price)
+      bestBid: bestSell, // Best SELL price (you sell USDT at this price)
       mid,
       spreadPct,
-      buyTop10: buyData.items,
-      sellTop10: sellData.items,
+      buyTop10: buyItems,
+      sellTop10: sellItems,
       stale: buyData.stale || sellData.stale,
     }
   } catch (error) {

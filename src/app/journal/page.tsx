@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BookOpen } from 'lucide-react'
@@ -22,7 +22,7 @@ import { deriveTrade, calculateBalances, calculateEquity, calculateFeeSummary, c
 import { fetchSummary } from '@/lib/okx'
 import type { Trade, Settings } from '@/lib/types'
 
-export default function JournalPage() {
+function JournalContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isDraft = searchParams.get('draft') === '1'
@@ -136,5 +136,13 @@ export default function JournalPage() {
         <TradesTable trades={derivedTrades} onDelete={handleDeleteTrade} />
       </main>
     </div>
+  )
+}
+
+export default function JournalPage() {
+  return (
+    <Suspense fallback={<Loading message="Loading journal..." />}>
+      <JournalContent />
+    </Suspense>
   )
 }
