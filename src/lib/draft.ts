@@ -1,4 +1,11 @@
-import type { DraftTrade } from './types'
+import type { TradeSide } from './types'
+
+export interface DraftTrade {
+  side: TradeSide
+  price: number
+  datetime: number
+  comment?: string
+}
 
 const DRAFT_KEY = 'okx_draft_trade'
 

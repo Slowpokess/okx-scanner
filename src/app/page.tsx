@@ -56,8 +56,6 @@ export default function ScannerPage() {
   }, [])
 
   const handleCreateTrade = (offer: OKXOffer, side: Side) => {
-    if (!summary) return
-
     const draft = {
       side: side === 'buy' ? ('BUY' as const) : ('SELL' as const),
       price: offer.price,
@@ -65,14 +63,6 @@ export default function ScannerPage() {
       comment: `${offer.merchantName} | ${offer.paymentMethods.join(', ')}${
         offer.terms ? ` | ${offer.terms}` : ''
       }`,
-      snapshot: {
-        snapshotTs: summary.ts,
-        bestBid: summary.bestBid,
-        bestAsk: summary.bestAsk,
-        mid: summary.mid,
-        spreadPct: summary.spreadPct,
-        stale: summary.stale || false,
-      },
     }
 
     saveDraftTrade(draft)
